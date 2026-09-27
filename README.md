@@ -4,7 +4,7 @@ BrandVault is a secure brand asset management application built with Next.js App
 
 ## Security principles
 
-- Every private resource is tied to a workspace.
+- Every private resource is tied to a workspace..
 - Every workspace is owned by the authenticated user.
 - Browser-supplied workspace IDs and user IDs are never trusted for authorization.
 - Protected data is read through server-side checks before the app exposes it.
