@@ -4,17 +4,17 @@ BrandVault is a secure brand asset management application built with Next.js App
 
 ## Security principles
 
-- Every private resource is tied to a workspace..
+- Every private resource is tied to a workspace.
 - Every workspace is owned by the authenticated user.
 - Browser-supplied workspace IDs and user IDs are never trusted for authorization.
 - Protected data is read through server-side checks before the app exposes it.
+- PostgreSQL row-level security remains enabled as the final ownership boundary.
 - AI outputs are validated before they are surfaced to the user.
 
 ## Local setup
 
-1. Copy `.env.example` to `.env.local`.
-2. Add your Supabase project URL and anonymous key.
-3. Install dependencies:
+1. Create `.env.local` with the values below.
+2. Install dependencies:
 
 ```bash
 npm install
@@ -30,8 +30,8 @@ npm run dev
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL="https://<project-ref>.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="<anon-key>"
-SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<publishable-key>"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 ```
 
-Only the public Supabase values are exposed to the browser. The service role key remains server-only.
+Set `NEXT_PUBLIC_SITE_URL` to the deployed app origin in Vercel. Add both the local and deployed `/auth/confirm` URLs to Supabase Auth's allowed redirect URLs so email confirmation returns to BrandVault. No service-role key is used by the application.

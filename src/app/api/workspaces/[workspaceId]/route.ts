@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import { NextResponse } from "next/server";
 
 import { requireWorkspaceAccess } from "@/lib/auth";
@@ -12,18 +13,25 @@ export async function GET(
 
     return NextResponse.json({
       workspaceId: workspace.id,
-      ownerId: workspace.user_id,
-      message: "Workspace data is scoped to the authenticated user's workspace only.",
+      name: workspace.name,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-
-    if (message.includes("Unauthorized") || message.includes("Forbidden")) {
-      return NextResponse.json({ error: message }, { status: 403 });
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid workspace ID." }, { status: 400 });
     }
 
-    if (message.includes("Workspace not found")) {
-      return NextResponse.json({ error: message }, { status: 404 });
+    const message = error instanceof Error ? error.message : "Unexpected server error.";
+
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+
+    if (message === "Forbidden") {
+      return NextResponse.json({ error: "Workspace access denied." }, { status: 403 });
+    }
+
+    if (message === "Workspace not found") {
+      return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
     }
 
     return NextResponse.json({ error: "Unable to read workspace." }, { status: 500 });

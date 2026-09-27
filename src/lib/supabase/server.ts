@@ -4,10 +4,10 @@ import { cookies } from "next/headers";
 import { requireSupabaseEnv } from "@/lib/env";
 
 export async function createSupabaseServerClient() {
-  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } = requireSupabaseEnv();
+  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY } = requireSupabaseEnv();
   const cookieStore = await cookies();
 
-  return createServerClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+  return createServerClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -23,7 +23,7 @@ export async function createSupabaseServerClient() {
             cookieStore.set(cookie.name, cookie.value, options);
           }
         } catch {
-          throw new Error("Failed to persist Supabase auth cookies.");
+          return;
         }
       },
     },

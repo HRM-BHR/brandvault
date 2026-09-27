@@ -3,11 +3,25 @@ import { z } from "zod";
 export const workspaceIdSchema = z
   .string({ message: "Workspace ID is required." })
   .trim()
-  .min(1, "Workspace ID cannot be empty.")
-  .max(128, "Workspace ID is too long.");
+  .uuid("Workspace ID must be a valid UUID.");
 
 export const userIdSchema = z
   .string({ message: "User ID is required." })
   .trim()
-  .min(1, "User ID cannot be empty.")
-  .max(128, "User ID is too long.");
+  .uuid("User ID must be a valid UUID.");
+
+export const signInSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address."),
+  password: z.string().min(1, "Enter your password."),
+});
+
+export const signUpSchema = z
+  .object({
+    email: z.string().trim().email("Enter a valid email address."),
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    confirmPassword: z.string().min(1, "Confirm your password."),
+  })
+  .refine(({ password, confirmPassword }) => password === confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
