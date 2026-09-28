@@ -25,3 +25,42 @@ export const signUpSchema = z
     message: "Passwords do not match.",
     path: ["confirmPassword"],
   });
+
+function isHttpUrl(value: string) {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+export const brandProfileInputSchema = z
+  .object({
+    name: z.string().trim().min(1, "Brand name is required.").max(120),
+    primary_color: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Enter a valid 6-digit hex color.")
+      .transform((value) => value.toUpperCase()),
+    secondary_color: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Enter a valid 6-digit hex color.")
+      .transform((value) => value.toUpperCase()),
+    logo_url: z
+      .string()
+      .trim()
+      .max(2048, "Logo URL is too long.")
+      .refine((value) => value.length === 0 || isHttpUrl(value), "Enter a valid HTTP or HTTPS URL.")
+      .optional()
+      .transform((value) => value || null),
+    default_font: z
+      .string()
+      .trim()
+      .max(120, "Default font is too long.")
+      .optional()
+      .transform((value) => value || null),
+  })
+  .strict();
+
+export type BrandProfileInput = z.output<typeof brandProfileInputSchema>;

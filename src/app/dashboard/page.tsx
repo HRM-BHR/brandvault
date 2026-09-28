@@ -50,14 +50,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               Signed in as {context.user.email ?? "your account"}
             </p>
           </div>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition hover:bg-muted"
+          <div className="flex items-center gap-2">
+            <Link
+              href="/brand"
+              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
             >
-              Sign out
-            </button>
-          </form>
+              Brand Profile
+            </Link>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition hover:bg-muted"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
 
         {params.error === "signout" ? (
