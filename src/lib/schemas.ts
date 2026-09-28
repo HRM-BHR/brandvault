@@ -64,3 +64,31 @@ export const brandProfileInputSchema = z
   .strict();
 
 export type BrandProfileInput = z.output<typeof brandProfileInputSchema>;
+
+export const MAX_FOLDER_DEPTH = 3;
+
+const folderNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Folder name is required.")
+  .max(100, "Folder name must be 100 characters or fewer.");
+
+export const createFolderInputSchema = z
+  .object({
+    name: folderNameSchema,
+    parent_folder_id: z.string().uuid("Parent folder ID must be a valid UUID.").nullable().optional(),
+  })
+  .strict();
+
+export const updateFolderInputSchema = z
+  .object({
+    name: folderNameSchema.optional(),
+    parent_folder_id: z.string().uuid("Parent folder ID must be a valid UUID.").nullable().optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "Provide a folder name or parent folder ID to update.",
+  });
+
+export type CreateFolderInput = z.output<typeof createFolderInputSchema>;
+export type UpdateFolderInput = z.output<typeof updateFolderInputSchema>;

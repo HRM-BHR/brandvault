@@ -53,9 +53,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex items-center gap-2">
             <Link
               href="/brand"
-              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition hover:bg-muted"
             >
               Brand Profile
+            </Link>
+            <Link
+              href="/folders"
+              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              Folders
             </Link>
             <form action={signOut}>
               <button
