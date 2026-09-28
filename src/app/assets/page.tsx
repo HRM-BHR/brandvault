@@ -4,17 +4,33 @@ import { redirect } from "next/navigation";
 import { AssetManager } from "@/app/components/asset-manager";
 import { listActiveAssetsForCurrentWorkspace, type Asset } from "@/lib/assets";
 import { listFoldersForCurrentWorkspace, type Folder } from "@/lib/folders";
+import { assetListQuerySchema, type AssetListQuery } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssetsPage() {
+type AssetsPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AssetsPage({ searchParams }: AssetsPageProps) {
   let assets: Asset[] = [];
   let folders: Folder[] = [];
   let loadFailed = false;
+  const params = await searchParams;
+  const parsedQuery = assetListQuerySchema.safeParse({
+    search: params.search,
+    sort: params.sort,
+  });
+
+  if (!parsedQuery.success) {
+    redirect("/assets");
+  }
+
+  const query: AssetListQuery = parsedQuery.data;
 
   try {
     folders = await listFoldersForCurrentWorkspace();
-    assets = await listActiveAssetsForCurrentWorkspace();
+    assets = await listActiveAssetsForCurrentWorkspace(query);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       redirect("/login");
@@ -40,7 +56,7 @@ export default async function AssetsPage() {
         </Link>
       </div>
 
-      <AssetManager initialAssets={assets} folders={folders} loadFailed={loadFailed} />
+      <AssetManager initialAssets={assets} folders={folders} loadFailed={loadFailed} query={query} />
     </main>
   );
 }

@@ -130,3 +130,12 @@ export const updateAssetInputSchema = z
 
 export type CreateAssetInput = z.output<typeof createAssetInputSchema>;
 export type UpdateAssetInput = z.output<typeof updateAssetInputSchema>;
+
+export const assetSortSchema = z.enum(["updated_desc", "name_asc"]);
+
+export const assetListQuerySchema = z.object({
+  search: z.string().trim().max(120, "Search is limited to 120 characters.").optional().default(""),
+  sort: assetSortSchema.optional().default("updated_desc"),
+});
+
+export type AssetListQuery = z.output<typeof assetListQuerySchema>;

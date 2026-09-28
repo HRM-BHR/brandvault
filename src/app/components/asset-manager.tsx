@@ -6,11 +6,13 @@ import { FilePlus2, Pencil, Trash2, X } from "lucide-react";
 
 import type { Asset } from "@/lib/assets";
 import type { Folder } from "@/lib/folders";
+import type { AssetListQuery } from "@/lib/schemas";
 
 type AssetManagerProps = {
   initialAssets: Asset[];
   folders: Folder[];
   loadFailed: boolean;
+  query: AssetListQuery;
 };
 
 type AssetFormValues = {
@@ -47,6 +49,24 @@ async function readPayload(response: Response): Promise<ApiPayload | null> {
   return response.json().catch(() => null) as Promise<ApiPayload | null>;
 }
 
+function sortAssets(assets: Asset[], sort: AssetListQuery["sort"]) {
+  return [...assets].sort((left, right) => sort === "name_asc"
+    ? left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+    : right.updated_at.localeCompare(left.updated_at) || left.id.localeCompare(right.id));
+}
+
+function matchesSearch(asset: Asset, search: string) {
+  return !search || asset.name.toLocaleLowerCase().includes(search.toLocaleLowerCase());
+}
+
+function applyAssetResult(current: Asset[], updated: Asset, query: AssetListQuery) {
+  const withoutUpdated = current.filter((asset) => asset.id !== updated.id);
+  return sortAssets(
+    matchesSearch(updated, query.search) ? [...withoutUpdated, updated] : withoutUpdated,
+    query.sort,
+  );
+}
+
 function valuesFromAsset(asset: Asset): AssetFormValues {
   return {
     name: asset.name,
@@ -58,7 +78,7 @@ function valuesFromAsset(asset: Asset): AssetFormValues {
 
 const emptyForm: AssetFormValues = { name: "", type: "", url: "", folder_id: "" };
 
-export function AssetManager({ initialAssets, folders, loadFailed }: AssetManagerProps) {
+export function AssetManager({ initialAssets, folders, loadFailed, query }: AssetManagerProps) {
   const [assets, setAssets] = useState(initialAssets);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -140,10 +160,7 @@ export function AssetManager({ initialAssets, folders, loadFailed }: AssetManage
         return;
       }
 
-      setAssets((current) => editingAsset
-        ? current.map((asset) => asset.id === payload.asset?.id ? payload.asset : asset)
-        : [payload.asset!, ...current],
-      );
+      setAssets((current) => applyAssetResult(current, payload.asset!, query));
       setSuccess(editingAsset ? "Asset updated." : "Asset created.");
       closeForm();
     } catch {
@@ -170,7 +187,7 @@ export function AssetManager({ initialAssets, folders, loadFailed }: AssetManage
         return;
       }
 
-      setAssets((current) => current.map((item) => item.id === payload.asset?.id ? payload.asset : item));
+      setAssets((current) => applyAssetResult(current, payload.asset!, query));
       setSuccess("Asset moved.");
     } catch {
       showError("Unable to reach BrandVault. Check your connection and try again.");
@@ -218,17 +235,53 @@ export function AssetManager({ initialAssets, folders, loadFailed }: AssetManage
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
-        <p className="text-sm text-muted-foreground">{assets.length} active {assets.length === 1 ? "asset" : "assets"}</p>
-        <button
-          type="button"
-          onClick={formOpen && !editingAsset ? closeForm : openCreateForm}
-          disabled={pending}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {formOpen && !editingAsset ? <X aria-hidden="true" className="size-4" /> : <FilePlus2 aria-hidden="true" className="size-4" />}
-          {formOpen && !editingAsset ? "Close" : "Add asset"}
-        </button>
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <p className="text-sm text-muted-foreground">{assets.length} active {assets.length === 1 ? "asset" : "assets"}</p>
+          <Link href="/trash" className="mt-1 inline-block text-sm font-medium underline underline-offset-4">
+            Open Trash
+          </Link>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <form action="/assets" method="get" className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <label htmlFor="asset-search" className="text-xs font-medium text-muted-foreground">Search name</label>
+              <input
+                id="asset-search"
+                name="search"
+                type="search"
+                defaultValue={query.search}
+                maxLength={120}
+                placeholder="Search assets…"
+                className="h-9 w-48 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="asset-sort" className="text-xs font-medium text-muted-foreground">Sort</label>
+              <select
+                id="asset-sort"
+                name="sort"
+                defaultValue={query.sort}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="updated_desc">Recently updated</option>
+                <option value="name_asc">Name A–Z</option>
+              </select>
+            </div>
+            <button type="submit" className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium transition hover:bg-muted">
+              Apply
+            </button>
+          </form>
+          <button
+            type="button"
+            onClick={formOpen && !editingAsset ? closeForm : openCreateForm}
+            disabled={pending}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {formOpen && !editingAsset ? <X aria-hidden="true" className="size-4" /> : <FilePlus2 aria-hidden="true" className="size-4" />}
+            {formOpen && !editingAsset ? "Close" : "Add asset"}
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -259,8 +312,15 @@ export function AssetManager({ initialAssets, folders, loadFailed }: AssetManage
 
       {assets.length === 0 ? (
         <div className="border-b border-border py-14 text-center">
-          <p className="font-medium">No active assets yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Add an asset using its URL to get started.</p>
+          <p className="font-medium">{query.search ? "No assets match your search" : "No active assets yet"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {query.search ? "Try another name or clear the search." : "Add an asset using its URL to get started."}
+          </p>
+          {query.search ? (
+            <Link href="/assets" className="mt-3 inline-block text-sm font-medium underline underline-offset-4">
+              Clear search
+            </Link>
+          ) : null}
         </div>
       ) : (
         <div className="divide-y divide-border">

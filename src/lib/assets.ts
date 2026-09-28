@@ -1,7 +1,7 @@
 import "server-only";
 
 import { ensureAuthenticatedWorkspace } from "@/lib/auth";
-import type { CreateAssetInput, UpdateAssetInput } from "@/lib/schemas";
+import type { AssetListQuery, CreateAssetInput, UpdateAssetInput } from "@/lib/schemas";
 import { assetIdSchema } from "@/lib/schemas";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -15,6 +15,8 @@ export type Asset = {
   updated_at: string;
 };
 
+export type DeletedAsset = Asset & { deleted_at: string };
+
 export type AssetOperationErrorKind = "not-found" | "folder-not-found" | "database";
 
 export class AssetOperationError extends Error {
@@ -24,6 +26,7 @@ export class AssetOperationError extends Error {
 }
 
 const assetFields = "id, folder_id, name, type, url, created_at, updated_at";
+const deletedAssetFields = `${assetFields}, deleted_at`;
 
 async function getAssetContext() {
   const { workspace } = await ensureAuthenticatedWorkspace();
@@ -56,21 +59,50 @@ async function assertFolderBelongsToWorkspace(
   }
 }
 
-export async function listActiveAssetsForCurrentWorkspace(): Promise<Asset[]> {
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+export async function listActiveAssetsForCurrentWorkspace(
+  filters: AssetListQuery,
+): Promise<Asset[]> {
   const { workspace, supabase } = await getAssetContext();
-  const { data, error } = await supabase
+  let query = supabase
     .from("assets")
     .select(assetFields)
     .eq("workspace_id", workspace.id)
-    .is("deleted_at", null)
-    .order("updated_at", { ascending: false })
-    .order("id", { ascending: true });
+    .is("deleted_at", null);
+
+  if (filters.search) {
+    query = query.ilike("name", `%${escapeLikePattern(filters.search)}%`);
+  }
+
+  const { data, error } = filters.sort === "name_asc"
+    ? await query.order("name", { ascending: true }).order("id", { ascending: true })
+    : await query.order("updated_at", { ascending: false }).order("id", { ascending: true });
 
   if (error) {
     throw new AssetOperationError("database");
   }
 
   return (data ?? []) as Asset[];
+}
+
+export async function listDeletedAssetsForCurrentWorkspace(): Promise<DeletedAsset[]> {
+  const { workspace, supabase } = await getAssetContext();
+  const { data, error } = await supabase
+    .from("assets")
+    .select(deletedAssetFields)
+    .eq("workspace_id", workspace.id)
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new AssetOperationError("database");
+  }
+
+  return (data ?? []) as DeletedAsset[];
 }
 
 export async function createAssetForCurrentWorkspace(input: CreateAssetInput): Promise<Asset> {
@@ -200,4 +232,29 @@ export async function trashActiveAssetForCurrentWorkspace(assetIdInput: string):
   if (!data) {
     throw new AssetOperationError("not-found");
   }
+}
+
+export async function restoreDeletedAssetForCurrentWorkspace(
+  assetIdInput: string,
+): Promise<Asset> {
+  const assetId = assetIdSchema.parse(assetIdInput);
+  const { workspace, supabase } = await getAssetContext();
+  const { data, error } = await supabase
+    .from("assets")
+    .update({ deleted_at: null })
+    .eq("id", assetId)
+    .eq("workspace_id", workspace.id)
+    .not("deleted_at", "is", null)
+    .select(assetFields)
+    .maybeSingle();
+
+  if (error) {
+    throw new AssetOperationError("database");
+  }
+
+  if (!data) {
+    throw new AssetOperationError("not-found");
+  }
+
+  return data as Asset;
 }
