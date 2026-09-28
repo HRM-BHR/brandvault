@@ -5,6 +5,11 @@ export const workspaceIdSchema = z
   .trim()
   .uuid("Workspace ID must be a valid UUID.");
 
+export const assetIdSchema = z
+  .string({ message: "Asset ID is required." })
+  .trim()
+  .uuid("Asset ID must be a valid UUID.");
+
 export const userIdSchema = z
   .string({ message: "User ID is required." })
   .trim()
@@ -92,3 +97,36 @@ export const updateFolderInputSchema = z
 
 export type CreateFolderInput = z.output<typeof createFolderInputSchema>;
 export type UpdateFolderInput = z.output<typeof updateFolderInputSchema>;
+
+const assetNameSchema = z.string().trim().min(1, "Asset name is required.").max(160);
+const assetTypeSchema = z.string().trim().min(1, "Asset type is required.").max(80);
+const assetUrlSchema = z
+  .string()
+  .trim()
+  .max(2048, "Asset URL is too long.")
+  .refine(isHttpUrl, "Enter a valid HTTP or HTTPS URL.");
+const assetFolderIdSchema = z.string().uuid("Folder ID must be a valid UUID.").nullable();
+
+export const createAssetInputSchema = z
+  .object({
+    name: assetNameSchema,
+    type: assetTypeSchema,
+    url: assetUrlSchema,
+    folder_id: assetFolderIdSchema.optional(),
+  })
+  .strict();
+
+export const updateAssetInputSchema = z
+  .object({
+    name: assetNameSchema.optional(),
+    type: assetTypeSchema.optional(),
+    url: assetUrlSchema.optional(),
+    folder_id: assetFolderIdSchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "Provide at least one asset field to update.",
+  });
+
+export type CreateAssetInput = z.output<typeof createAssetInputSchema>;
+export type UpdateAssetInput = z.output<typeof updateAssetInputSchema>;

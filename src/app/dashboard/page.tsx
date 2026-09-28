@@ -35,6 +35,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     );
   }
 
+            <Link
+              href="/assets"
+              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              Assets
+            </Link>
   const params = await searchParams;
 
   return (
