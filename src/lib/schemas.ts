@@ -131,6 +131,30 @@ export const updateAssetInputSchema = z
 export type CreateAssetInput = z.output<typeof createAssetInputSchema>;
 export type UpdateAssetInput = z.output<typeof updateAssetInputSchema>;
 
+export const assetMetadataModelOutputSchema = z
+  .object({
+    tags: z.array(z.string()).min(3).max(8),
+    description: z.string(),
+    usage_suggestion: z.string(),
+  })
+  .strict();
+
+export const assetMetadataSaveSchema = z
+  .object({
+    tags: z
+      .array(z.string().trim().min(1).max(40, "Tags must be 40 characters or fewer."))
+      .min(3, "Provide at least 3 tags.")
+      .max(8, "Provide no more than 8 tags.")
+      .refine((tags) => new Set(tags.map((tag) => tag.toLocaleLowerCase())).size === tags.length, {
+        message: "Tags must be unique.",
+      }),
+    description: z.string().trim().min(1, "Description is required.").max(500),
+    usage_suggestion: z.string().trim().min(1, "Usage suggestion is required.").max(300),
+  })
+  .strict();
+
+export type AssetMetadataSaveInput = z.output<typeof assetMetadataSaveSchema>;
+
 export const assetSortSchema = z.enum(["updated_desc", "name_asc"]);
 
 export const assetListQuerySchema = z.object({

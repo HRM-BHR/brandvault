@@ -1,7 +1,12 @@
 import "server-only";
 
 import { ensureAuthenticatedWorkspace } from "@/lib/auth";
-import type { AssetListQuery, CreateAssetInput, UpdateAssetInput } from "@/lib/schemas";
+import type {
+  AssetListQuery,
+  AssetMetadataSaveInput,
+  CreateAssetInput,
+  UpdateAssetInput,
+} from "@/lib/schemas";
 import { assetIdSchema } from "@/lib/schemas";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -11,6 +16,9 @@ export type Asset = {
   name: string;
   type: string;
   url: string;
+  tags: string[];
+  description: string | null;
+  usage_suggestion: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -25,7 +33,7 @@ export class AssetOperationError extends Error {
   }
 }
 
-const assetFields = "id, folder_id, name, type, url, created_at, updated_at";
+const assetFields = "id, folder_id, name, type, url, tags, description, usage_suggestion, created_at, updated_at";
 const deletedAssetFields = `${assetFields}, deleted_at`;
 
 async function getAssetContext() {
@@ -133,7 +141,15 @@ export async function createAssetForCurrentWorkspace(input: CreateAssetInput): P
   return data as Asset;
 }
 
-export async function getActiveAssetForCurrentWorkspace(assetIdInput: string): Promise<Asset> {
+export type ActiveAssetWorkspaceContext = {
+  asset: Asset;
+  workspaceId: string;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+};
+
+export async function getActiveAssetContextForCurrentWorkspace(
+  assetIdInput: string,
+): Promise<ActiveAssetWorkspaceContext> {
   const assetId = assetIdSchema.parse(assetIdInput);
   const { workspace, supabase } = await getAssetContext();
   const { data, error } = await supabase
@@ -152,7 +168,12 @@ export async function getActiveAssetForCurrentWorkspace(assetIdInput: string): P
     throw new AssetOperationError("not-found");
   }
 
-  return data as Asset;
+  return { asset: data as Asset, workspaceId: workspace.id, supabase };
+}
+
+export async function getActiveAssetForCurrentWorkspace(assetIdInput: string): Promise<Asset> {
+  const { asset } = await getActiveAssetContextForCurrentWorkspace(assetIdInput);
+  return asset;
 }
 
 export async function updateActiveAssetForCurrentWorkspace(
@@ -213,6 +234,7 @@ export async function updateActiveAssetForCurrentWorkspace(
   return data as Asset;
 }
 
+
 export async function trashActiveAssetForCurrentWorkspace(assetIdInput: string): Promise<void> {
   const assetId = assetIdSchema.parse(assetIdInput);
   const { workspace, supabase } = await getAssetContext();
@@ -245,6 +267,36 @@ export async function restoreDeletedAssetForCurrentWorkspace(
     .eq("id", assetId)
     .eq("workspace_id", workspace.id)
     .not("deleted_at", "is", null)
+    .select(assetFields)
+    .maybeSingle();
+
+  if (error) {
+    throw new AssetOperationError("database");
+  }
+
+  if (!data) {
+    throw new AssetOperationError("not-found");
+  }
+
+  return data as Asset;
+}
+
+export async function saveActiveAssetMetadataForCurrentWorkspace(
+  assetIdInput: string,
+  input: AssetMetadataSaveInput,
+): Promise<Asset> {
+  const assetId = assetIdSchema.parse(assetIdInput);
+  const { workspace, supabase } = await getAssetContext();
+  const { data, error } = await supabase
+    .from("assets")
+    .update({
+      tags: input.tags,
+      description: input.description,
+      usage_suggestion: input.usage_suggestion,
+    })
+    .eq("id", assetId)
+    .eq("workspace_id", workspace.id)
+    .is("deleted_at", null)
     .select(assetFields)
     .maybeSingle();
 

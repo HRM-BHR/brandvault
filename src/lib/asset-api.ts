@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { AssetMetadataError } from "@/lib/ai/asset-metadata";
 import { AssetOperationError } from "@/lib/assets";
 
 export type ParsedAssetJson<T> =
@@ -12,6 +13,7 @@ export type ParsedAssetJson<T> =
 export async function parseAssetJson<T>(
   request: Request,
   schema: z.ZodType<T>,
+  entityName = "asset",
 ): Promise<ParsedAssetJson<T>> {
   let body: unknown;
 
@@ -20,7 +22,7 @@ export async function parseAssetJson<T>(
   } catch {
     return {
       success: false,
-      response: NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 }),
+      response: NextResponse.json({ error: `Invalid ${entityName} JSON request body.` }, { status: 400 }),
     };
   }
 
@@ -29,7 +31,7 @@ export async function parseAssetJson<T>(
     return {
       success: false,
       response: NextResponse.json(
-        { error: "Invalid asset details.", details: parsed.error.flatten().fieldErrors },
+        { error: `Invalid ${entityName} details.`, details: parsed.error.flatten().fieldErrors },
         { status: 400 },
       ),
     };
@@ -54,4 +56,43 @@ export function handleAssetError(error: unknown) {
   }
 
   return NextResponse.json({ error: "Unable to process the asset." }, { status: 500 });
+}
+
+export function handleAssetMetadataError(error: unknown) {
+  if (error instanceof AssetMetadataError) {
+    switch (error.kind) {
+      case "not-configured":
+        return NextResponse.json(
+          { error: "AI metadata generation is not configured on this server." },
+          { status: 503 },
+        );
+      case "rate-limited":
+        return NextResponse.json(
+          { error: "AI metadata is temporarily rate-limited. Please try again shortly." },
+          { status: 429 },
+        );
+      case "incomplete":
+        return NextResponse.json(
+          { error: "AI metadata generation did not complete. Please try again." },
+          { status: 502 },
+        );
+      case "invalid-output":
+        return NextResponse.json(
+          { error: "AI returned metadata that could not be validated. Please try again." },
+          { status: 502 },
+        );
+      case "provider":
+        return NextResponse.json(
+          { error: "AI metadata generation is temporarily unavailable." },
+          { status: 502 },
+        );
+      case "context":
+        return NextResponse.json(
+          { error: "Unable to load the asset context for AI metadata." },
+          { status: 500 },
+        );
+    }
+  }
+
+  return handleAssetError(error);
 }

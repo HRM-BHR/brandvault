@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { FilePlus2, Pencil, Trash2, X } from "lucide-react";
 
+import { AssetMetadataReview } from "@/app/components/asset-metadata-review";
 import type { Asset } from "@/lib/assets";
 import type { Folder } from "@/lib/folders";
 import type { AssetListQuery } from "@/lib/schemas";
@@ -375,6 +376,12 @@ export function AssetManager({ initialAssets, folders, loadFailed, query }: Asse
                   Trash
                 </button>
               </div>
+              <AssetMetadataReview
+                asset={asset}
+                onSaved={(updatedAsset) =>
+                  setAssets((current) => applyAssetResult(current, updatedAsset, query))
+                }
+              />
             </article>
           ))}
         </div>
